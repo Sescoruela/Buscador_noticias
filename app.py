@@ -15,29 +15,62 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 # ---------------------------
 # Streamlit UI
 # ---------------------------
-st.set_page_config(page_title="News Writer Agent (LangGraph)", page_icon="📰", layout="wide")
+st.set_page_config(page_title="� ¡HOLA! Revista del Corazón", page_icon="💕", layout="wide")
 
-st.title("📰 News Writer Agent (LangGraph)")
-st.caption("Flujo: Search → Tools (Tavily) ↔ Search → Outliner → Writer")
+st.markdown("""
+<div style='text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b9d 0%, #c06c84 100%); border-radius: 10px; margin-bottom: 20px;'>
+    <h1 style='color: white; font-size: 3em; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);'>
+        💕 ¡HOLA! 💕
+    </h1>
+    <p style='color: white; font-size: 1.5em; margin: 10px 0 0 0; font-style: italic;'>
+        Tu Revista Digital del Corazón
+    </p>
+    <p style='color: #ffe6f0; font-size: 1em; margin: 5px 0 0 0;'>
+        ✨ Las noticias más exclusivas de tus celebridades favoritas ✨
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("🔐 Claves")
-    google_key = st.text_input("Gemini / Google API Key", type="password")
-    tavily_key = st.text_input("Tavily API Key", type="password")
+    st.markdown("### 🔐 Configuración de Redacción")
+    google_key = st.text_input("🔑 Gemini / Google API Key", type="password", help="Tu clave API de Google Gemini")
+    tavily_key = st.text_input("🔍 Tavily API Key", type="password", help="Tu clave API de Tavily para búsquedas")
 
     st.divider()
-    st.header("⚙️ Ajustes")
-    model_name = st.text_input("Modelo", value="gemini-2.5-flash")
-    temperature = st.slider("Temperatura", 0.0, 1.0, 0.2, 0.05)
-    max_results = st.slider("Tavily max_results", 1, 10, 5, 1)
+    st.markdown("### ⚙️ Ajustes del Editor")
+    model_name = st.text_input("🤖 Modelo IA", value="gemini-2.5-flash")
+    temperature = st.slider("🌡️ Creatividad", 0.0, 1.0, 0.3, 0.05, help="Mayor valor = más creativo")
+    max_results = st.slider("📰 Cantidad de noticias", 1, 10, 5, 1, help="Número de fuentes a consultar")
 
     st.divider()
-    if st.button("🧹 Borrar trazas / estado"):
+    st.markdown("### 💝 Secciones Populares")
+    st.markdown("""
+    - 💑 **Romances y Parejas**
+    - 💍 **Bodas y Compromisos**
+    - 👶 **Bebés y Embarazos**
+    - 💔 **Rupturas y Divorcios**
+    - ⭐ **Escándalos y Polémicas**
+    - 👗 **Moda y Glamour**
+    """)
+    
+    st.divider()
+    if st.button("🧹 Nueva Sesión", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
 if not google_key or not tavily_key:
-    st.info("Introduce **Gemini API Key** y **Tavily API Key** en la barra lateral para empezar.")
+    st.markdown("""
+    <div style='background-color: #fff0f5; padding: 20px; border-radius: 10px; border-left: 5px solid #ff69b4;'>
+        <h3 style='color: #c71585; margin-top: 0;'>� ¡Bienvenida/o a tu Revista del Corazón!</h3>
+        <p style='color: #8b008b;'>
+            Para comenzar a generar artículos exclusivos sobre tus celebridades favoritas, 
+            introduce tus <strong>API Keys</strong> en la barra lateral. 
+        </p>
+        <p style='color: #8b008b;'>
+            💡 <em>¿No tienes las claves? Consigue tu API de Google Gemini y Tavily para empezar.</em>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     st.stop()
 
 # Set env vars (recomendado por integraciones)
@@ -53,23 +86,89 @@ class AgentState(TypedDict):
 
 
 # ---------------------------
-# Prompt templates (igual que el notebook)
+# Prompt templates - Especializados en noticias del corazón
 # ---------------------------
-search_template = """Your job is to search the web for related news that would be relevant to generate the article described by the user.
+search_template = """Eres un experto buscador de noticias del corazón, prensa rosa y celebridades.
 
-NOTE: Do not write the article. Just search the web for related news if needed and then forward that news to the outliner node.
+Tu trabajo es buscar en la web noticias relacionadas con famosos, celebridades, parejas, relaciones, escándalos, bodas, divorcios, 
+embarazos, rumores y todo lo relacionado con el mundo del espectáculo y la prensa del corazón que sea relevante para el artículo 
+que el usuario quiere generar.
+
+IMPORTANTE: 
+- Busca solo información relacionada con celebridades y noticias del corazón
+- NO escribas el artículo, solo busca las noticias
+- Enfócate en contenido de actualidad rosa y famosos
+- Pasa la información al siguiente nodo para crear el esquema
+
+NOTA: Las búsquedas deben ser en español cuando sea posible, o traducir el contexto al español.
 """
 
-outliner_template = """Your job is to take as input a list of articles from the web along with users instruction on what article they want to write and generate an outline
-for the article.
+outliner_template = """Eres un experto editor de revistas del corazón y prensa rosa.
+
+DEBES crear un esquema estructurado y detallado para un artículo de noticias del corazón basándote en las noticias proporcionadas.
+
+GENERA un esquema que incluya:
+
+**TÍTULO PROPUESTO:** [Título atractivo y llamativo estilo prensa rosa]
+
+**ESTRUCTURA DEL ARTÍCULO:**
+
+1. **INTRODUCCIÓN/GANCHO:**
+   - Dato más impactante o exclusivo que enganche al lector
+   
+2. **CONTEXTO DE LA HISTORIA:**
+   - Antecedentes de la relación/situación
+   - Quiénes son los protagonistas
+   
+3. **DESARROLLO:**
+   - Eventos recientes y cronología
+   - Declaraciones y reacciones
+   - Detalles jugosos y datos exclusivos
+   
+4. **REACCIÓN DEL PÚBLICO:**
+   - Qué dicen los fans
+   - Impacto en redes sociales
+   
+5. **CIERRE:**
+   - Perspectivas a futuro
+   - Pregunta o reflexión final
+
+**PUNTOS CLAVE A INCLUIR:** [Lista de datos específicos, fechas, lugares, nombres]
+
+IMPORTANTE: Genera este esquema AHORA con toda la información proporcionada. NO digas que lo harás, HAZLO.
 """
 
-writer_template = """Your job is to write an article, do it in this format:
+writer_template = """Eres un redactor profesional de noticias del corazón. 
 
-TITLE: <title>
-BODY: <body>
+ESCRIBE AHORA un artículo completo en español basándote en el esquema proporcionado.
 
-NOTE: Do not copy the outline. You need to write the article with the info provided by the outline.
+**INSTRUCCIONES OBLIGATORIAS:**
+
+1. Usa este formato exacto:
+
+TÍTULO: [Título atractivo]
+
+[Párrafo introductorio impactante]
+
+[Desarrollo del artículo en 4-6 párrafos]
+
+[Cierre emotivo]
+
+2. ESTILO REQUERIDO:
+   ✓ Todo EN ESPAÑOL
+   ✓ Tono cercano y emocionante
+   ✓ Usa expresiones de prensa rosa: "se rumorea", "fuentes cercanas revelan", "en exclusiva", "¡bombazo!"
+   ✓ Incluye detalles específicos: fechas, lugares, nombres
+   ✓ Crea conexión emocional con el lector
+   ✓ Mínimo 400 palabras
+
+3. PROHIBIDO:
+   ✗ NO copies el esquema tal cual
+   ✗ NO uses viñetas ni listas
+   ✗ NO dejes secciones vacías
+   ✗ NO escribas en inglés
+
+ESCRIBE EL ARTÍCULO COMPLETO AHORA. EMPIEZA CON "TÍTULO:" y continúa con el texto.
 """
 
 
@@ -188,19 +287,28 @@ def render_message(m: BaseMessage):
 # ---------------------------
 # Main inputs
 # ---------------------------
-col1, col2 = st.columns([2, 1], vertical_alignment="top")
+st.markdown("""
+<div style='background: linear-gradient(to right, #ffeef8, #ffe6f0); padding: 15px; border-radius: 10px; margin: 20px 0; border: 2px dashed #ff69b4;'>
+    <h3 style='color: #c71585; margin-top: 0; text-align: center;'>💫 Genera tu Artículo Exclusivo 💫</h3>
+</div>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns([3, 1], vertical_alignment="top")
 
 with col1:
     user_instruction = st.text_area(
-        "🧾 Instrucción del artículo (lo que escribirías al agente)",
-        value="Write an article about the latest trends on AI. Keep it practical, include examples, and end with 3 key takeaways.",
+        "� ¿Qué exclusiva quieres revelar?",
+        value="Escribe un artículo sobre las últimas noticias de Bad Bunny y su vida amorosa. Incluye rumores recientes, declaraciones y reacciones de sus seguidores.",
         height=140,
+        placeholder="Ej: La boda secreta de Shakira, el romance de Rosalía, ¿reconciliación a la vista?, el escándalo que sacude Hollywood...",
+        help="Describe el tema sobre el que quieres el artículo"
     )
 
 with col2:
-    st.markdown("### ▶️ Ejecutar")
-    run = st.button("Generar artículo", type="primary", use_container_width=True)
-    st.caption("Se guardarán trazas por nodo en pestañas.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    run = st.button("✨ ¡Crear Exclusiva!", type="primary", use_container_width=True)
+    st.caption("📱 Artículo generado en segundos")
+    st.caption("🔥 Con las últimas noticias")
 
 # Persist traces
 if "traces" not in st.session_state:
@@ -247,62 +355,86 @@ if run:
 # ---------------------------
 # Tabs: result + trace per node
 # ---------------------------
-tabs = st.tabs(["📝 Artículo", "🔎 search", "🧰 tools", "🧱 outliner", "✍️ writer", "🪵 Raw trace"])
+st.markdown("<br>", unsafe_allow_html=True)
+tabs = st.tabs(["💕 TU EXCLUSIVA", "🔎 Investigación", "📰 Fuentes", "📋 Borrador", "✍️ Redacción Final", "🔧 Detalles Técnicos"])
 
 # Artículo final: normalmente está en el último mensaje del nodo writer
 with tabs[0]:
     writer_msgs = st.session_state.traces.get("writer", [])
     if writer_msgs:
-        st.subheader("Resultado final (writer)")
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #ff6b9d 0%, #c06c84 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+            <h2 style='color: white; text-align: center; margin: 0;'>⭐ ¡EXCLUSIVA! ⭐</h2>
+            <p style='color: white; text-align: center; margin: 5px 0 0 0;'>Tu artículo del corazón está listo</p>
+        </div>
+        """, unsafe_allow_html=True)
         render_message(writer_msgs[-1])
+        st.markdown("---")
+        st.markdown("💝 *Comparte esta exclusiva con tus amigas* 📱")
     else:
-        st.info("Ejecuta una generación para ver el artículo aquí.")
+        st.markdown("""
+        <div style='text-align: center; padding: 40px;'>
+            <h2 style='color: #ff69b4;'>� ¿Lista para tu exclusiva?</h2>
+            <p style='color: #c71585; font-size: 1.2em;'>
+                Escribe sobre qué celebridad quieres saber y haz clic en <strong>"✨ ¡Crear Exclusiva!"</strong>
+            </p>
+            <p style='color: #db7093;'>
+                🌟 Romances secretos • 💔 Rupturas inesperadas • 💍 Bodas de ensueño • 👶 Bebés en camino
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 with tabs[1]:
-    st.subheader("Trazabilidad: nodo search")
+    st.markdown("### 🔎 Fase de Investigación")
+    st.caption("Nuestro equipo busca las últimas noticias sobre tu celebridad favorita")
     msgs = st.session_state.traces.get("search", [])
     if not msgs:
-        st.info("Sin trazas aún.")
+        st.info("⏳ La investigación comenzará cuando solicites un artículo...")
     else:
         for i, m in enumerate(msgs, start=1):
-            st.markdown(f"---\n#### Paso search #{i}")
+            st.markdown(f"---\n#### 🔍 Investigación #{i}")
             render_message(m)
 
 with tabs[2]:
-    st.subheader("Trazabilidad: nodo tools (Tavily)")
+    st.markdown("### 📰 Fuentes y Referencias")
+    st.caption("Artículos y noticias consultadas de medios especializados")
     msgs = st.session_state.traces.get("tools", [])
     if not msgs:
-        st.info("Sin trazas aún.")
+        st.info("📚 Las fuentes aparecerán aquí durante la investigación...")
     else:
         for i, m in enumerate(msgs, start=1):
-            st.markdown(f"---\n#### Paso tools #{i}")
+            st.markdown(f"---\n#### 📄 Fuente #{i}")
             render_message(m)
 
 with tabs[3]:
-    st.subheader("Trazabilidad: nodo outliner")
+    st.markdown("### 📋 Borrador y Estructura")
+    st.caption("El esquema preliminar de tu artículo exclusivo")
     msgs = st.session_state.traces.get("outliner", [])
     if not msgs:
-        st.info("Sin trazas aún.")
+        st.info("✏️ El borrador se creará después de recopilar las noticias...")
     else:
         for i, m in enumerate(msgs, start=1):
-            st.markdown(f"---\n#### Paso outliner #{i}")
+            st.markdown(f"---\n#### 📝 Esquema #{i}")
             render_message(m)
 
 with tabs[4]:
-    st.subheader("Trazabilidad: nodo writer")
+    st.markdown("### ✍️ Redacción Final")
+    st.caption("El artículo completo siendo elaborado por nuestros redactores")
     msgs = st.session_state.traces.get("writer", [])
     if not msgs:
-        st.info("Sin trazas aún.")
+        st.info("📃 La redacción comenzará una vez terminado el borrador...")
     else:
         for i, m in enumerate(msgs, start=1):
-            st.markdown(f"---\n#### Paso writer #{i}")
+            st.markdown(f"---\n#### ✨ Versión #{i}")
             render_message(m)
 
 with tabs[5]:
-    st.subheader("Raw trace (debug)")
+    st.markdown("### 🔧 Información Técnica")
+    st.caption("Detalles del proceso de generación (para desarrolladores)")
     if not st.session_state.raw_updates:
-        st.info("Sin trazas aún.")
+        st.info("⚙️ Los detalles técnicos aparecerán durante el proceso...")
     else:
-        st.code(str(st.session_state.raw_updates[:50]))  # muestra primeras 50 entradas para no petar la UI
-        if len(st.session_state.raw_updates) > 50:
-            st.caption(f"Mostrando 50/{len(st.session_state.raw_updates)} entradas.")
+        with st.expander("📊 Ver trazas completas"):
+            st.code(str(st.session_state.raw_updates[:50]))
+            if len(st.session_state.raw_updates) > 50:
+                st.caption(f"Mostrando 50 de {len(st.session_state.raw_updates)} entradas técnicas.")
